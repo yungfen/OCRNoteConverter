@@ -53,14 +53,48 @@ def check_word(word: str) -> tuple:
     if all(t in _WORDS for t in tokens):
         return True, None
     if len(tokens) == 1:
-        # Prefilter by first letter and similar length to keep difflib fast.
-        candidates = [
-            c for c in _WORDS
-            if c and c[0] == w[0] and abs(len(c) - len(w)) <= 1
-        ]
+        # Length prefilter only — OCR errors often hit the first letter
+        # (e.g. 'pidden' -> 'hidden'), so don't require it to match.
+        candidates = [c for c in _WORDS if abs(len(c) - len(w)) <= 1]
         match = difflib.get_close_matches(w, candidates, n=1, cutoff=0.8)
         return False, (match[0] if match else None)
     return False, None
+
+
+def autocorrect_word(word: str) -> tuple:
+    """Return (corrected_word, original) — original is '' when unchanged.
+
+    Replaces an OCR-garbled headword with its dictionary suggestion when
+    one exists; preserves the original casing style for plain lowercase.
+    """
+    verified, suggestion = check_word(word)
+    if verified is False and suggestion:
+        return suggestion, word
+    return word, ""
+
+
+# Tokens to never "correct": common note abbreviations.
+_DEF_SKIP = {"esp", "sth", "sb", "etc", "vs", "adj", "adv"}
+
+
+def autocorrect_definition(text: str) -> str:
+    """Fix obvious OCR misspellings inside an English definition.
+
+    Conservative: only lowercase ASCII tokens of 4+ chars that aren't in
+    the dictionary, with a high similarity cutoff. CJK text is untouched.
+    """
+    if not _WORDS:
+        return text
+
+    def fix(m):
+        token = m.group(0)
+        if token in _DEF_SKIP or token in _WORDS:
+            return token
+        candidates = [c for c in _WORDS if abs(len(c) - len(token)) <= 1]
+        match = difflib.get_close_matches(token, candidates, n=1, cutoff=0.86)
+        return match[0] if match else token
+
+    return re.sub(r"\b[a-z]{4,}\b", fix, text)
 
 
 @lru_cache(maxsize=4096)

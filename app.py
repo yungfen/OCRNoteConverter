@@ -10,7 +10,12 @@ from fastapi.staticfiles import StaticFiles
 
 import sys
 
-from dictionary import check_word, reference_definition
+from dictionary import (
+    autocorrect_definition,
+    autocorrect_word,
+    check_word,
+    reference_definition,
+)
 from ocr import extract_text, vision_available
 from parser import parse_vocab
 
@@ -149,8 +154,9 @@ async def upload_images(files: List[UploadFile] = File(...)):
             continue
 
         for entry in entries:
-            word = entry["word"]
-            definition = entry["definition"]
+            # Auto-correct OCR misspellings before the entry becomes a card
+            word, corrected_from = autocorrect_word(entry["word"])
+            definition = autocorrect_definition(entry["definition"])
             key = normalize_word(word)
 
             # Update frequency (count how many times this word has appeared)
@@ -161,6 +167,8 @@ async def upload_images(files: List[UploadFile] = File(...)):
                     freq[key]["definition"] = definition
             else:
                 freq[key] = {"word": word, "definition": definition, "count": 1}
+            if corrected_from:
+                freq[key]["corrected_from"] = corrected_from
 
             all_cards.append({"word": word, "definition": definition, "key": key})
 
@@ -180,6 +188,7 @@ async def upload_images(files: List[UploadFile] = File(...)):
             "word": freq[key]["word"],
             "definition": freq[key]["definition"],
             "starred": starred,
+            "corrected_from": freq[key].get("corrected_from", ""),
         }))
 
     return JSONResponse(content={"cards": response_cards, "warnings": warnings})
@@ -201,5 +210,6 @@ async def get_all_cards():
             "word": data["word"],
             "definition": data["definition"],
             "starred": data.get("count", 1) > 1,
+            "corrected_from": data.get("corrected_from", ""),
         }))
     return JSONResponse(content={"cards": cards})
