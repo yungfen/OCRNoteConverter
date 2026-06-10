@@ -357,6 +357,7 @@
       <button class="toolbar-btn" id="shuffleBtn" title="Shuffle cards">🔀 Shuffle</button>
       <button class="toolbar-btn" id="filterBtn" title="Toggle starred filter">⭐ Starred Only</button>
       <button class="toolbar-btn" id="loadAllBtn" title="Load all saved cards">📂 All Saved</button>
+      <button class="toolbar-btn" id="resetBtn" title="Delete all saved cards">🗑️ Reset</button>
       <span class="card-counter" id="cardCounter">0 / 0</span>
     </div>
 
@@ -466,6 +467,14 @@
       spinnerOverlay.classList.remove('active');
       uploadBtn.disabled = false;
     }
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', async () => {
+    if (!confirm('Delete all saved cards? This cannot be undone.')) return;
+    await fetch('/reset', { method: 'POST' });
+    allCards = [];
+    displayCards = [];
+    applyFilter();
   });
 
   function showWarnings(warnings) {

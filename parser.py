@@ -76,6 +76,23 @@ def _is_garbage(line: str) -> bool:
     return False
 
 
+# A real vocab headword: letters only (apostrophe/hyphen/space allowed for
+# phrases like "disdain for" or "shore up"), starting with a letter.
+_VALID_WORD_RE = re.compile(r"^[A-Za-z][A-Za-z'\-]*(?: [A-Za-z'\-]+){0,3}$")
+
+
+def _is_valid_entry(word: str, definition: str) -> bool:
+    """Reject OCR garbage like '1PD22' -> '1122: 187X} ...'."""
+    if not _VALID_WORD_RE.match(word):
+        return False
+    # Definition must be mostly real content: letters or CJK, not digit soup.
+    content = re.findall(r"[A-Za-z　-〿一-鿿]", definition)
+    digits = re.findall(r"\d", definition)
+    if len(content) < 2 or len(digits) > len(content):
+        return False
+    return True
+
+
 def parse_vocab(text: str) -> List[Dict[str, str]]:
     """
     Parse OCR text into a list of {word, definition} dicts.
@@ -116,7 +133,8 @@ def parse_vocab(text: str) -> List[Dict[str, str]]:
             if result is not None:
                 word, definition = result
                 # Basic sanity: word shouldn't be suspiciously long (likely noise)
-                if len(word) <= 120 and len(definition) >= _MIN_DEF_LEN:
+                if (len(word) <= 120 and len(definition) >= _MIN_DEF_LEN
+                        and _is_valid_entry(word, definition)):
                     definition = _clean_cjk_spacing(definition)
                     cards.append({'word': word, 'definition': definition})
             elif cards and _looks_like_continuation(sub):
@@ -130,6 +148,10 @@ def parse_vocab(text: str) -> List[Dict[str, str]]:
 def _looks_like_continuation(line: str) -> bool:
     """A line with no delimiter that likely continues the previous definition:
     starts lowercase / with a bracket, or is a short trailing fragment."""
+    # Must be mostly real content, not OCR digit/symbol soup
+    content = re.findall(r"[A-Za-z　-〿一-鿿]", line)
+    if len(content) < len(line) * 0.6:
+        return False
     if re.match(r'^[a-z(\[]', line):
         return True
     # Short fragment of 1-3 words with no delimiter (e.g. "advantage")

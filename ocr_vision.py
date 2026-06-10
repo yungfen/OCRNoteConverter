@@ -23,10 +23,15 @@ def extract_text(image_bytes: bytes) -> tuple[str, float]:
     request = Vision.VNRecognizeTextRequest.alloc().init()
     request.setRecognitionLevel_(Vision.VNRequestTextRecognitionLevelAccurate)
     request.setUsesLanguageCorrection_(True)
-    request.setRecognitionLanguages_(["en-US", "zh-Hant", "zh-Hans"])
+    try:
+        # Mixed-language recognition needs revision 3 (macOS 13+).
+        request.setRevision_(Vision.VNRecognizeTextRequestRevision3)
+        request.setRecognitionLanguages_(["zh-Hant", "en-US"])
+    except Exception:
+        pass  # older macOS: let Vision auto-detect
 
     handler = Vision.VNImageRequestHandler.alloc().initWithCGImage_options_(
-        cg_image, None
+        cg_image, {}
     )
     success, error = handler.performRequests_error_([request], None)
     if not success:

@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 from pathlib import Path
 from typing import List
@@ -7,7 +8,9 @@ from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from ocr import extract_text
+import sys
+
+from ocr import extract_text, vision_available
 from parser import parse_vocab
 
 # Below this average Tesseract confidence the result is mostly garbage;
@@ -58,12 +61,20 @@ async def upload_images(files: List[UploadFile] = File(...)):
     all_cards = []
     warnings = []
 
+    if sys.platform == "darwin" and not vision_available():
+        warnings.append(
+            "Apple Vision OCR is not active — handwriting accuracy will be poor. "
+            "Run: pip install -r requirements.txt inside your virtualenv, "
+            "then restart the server."
+        )
+
     for upload in files:
         contents = await upload.read()
         name = upload.filename or "image"
         try:
             ocr_text, confidence = extract_text(contents)
         except Exception:
+            logging.exception("OCR failed for %s", name)
             warnings.append(f"{name}: could not be read as an image.")
             continue
 
@@ -114,6 +125,13 @@ async def upload_images(files: List[UploadFile] = File(...)):
         })
 
     return JSONResponse(content={"cards": response_cards, "warnings": warnings})
+
+
+@app.post("/reset")
+async def reset_cards():
+    if freq_file.exists():
+        freq_file.unlink()
+    return JSONResponse(content={"ok": True})
 
 
 @app.get("/cards")

@@ -6,9 +6,18 @@ failure modes so Tesseract sees the cleanest possible page.
 """
 
 import io
+import logging
 
 import pytesseract
 from PIL import Image, ImageFilter, ImageOps
+
+try:
+    # Lets Pillow open iPhone HEIC photos.
+    from pillow_heif import register_heif_opener
+
+    register_heif_opener()
+except ImportError:
+    pass
 
 # Tesseract reads small text poorly; upscale until the shorter side is at
 # least this many pixels.
@@ -103,8 +112,16 @@ try:
     import ocr_vision
 
     _VISION_AVAILABLE = True
-except ImportError:
+except Exception:  # pyobjc can raise more than ImportError on bad installs
     _VISION_AVAILABLE = False
+
+logging.getLogger(__name__).info(
+    "OCR engine: %s", "Apple Vision" if _VISION_AVAILABLE else "Tesseract"
+)
+
+
+def vision_available() -> bool:
+    return _VISION_AVAILABLE
 
 
 def extract_text(image_bytes: bytes) -> tuple[str, float]:
@@ -113,7 +130,7 @@ def extract_text(image_bytes: bytes) -> tuple[str, float]:
         try:
             return ocr_vision.extract_text(image_bytes)
         except Exception:
-            pass  # fall through to Tesseract
+            logging.exception("Vision OCR failed; falling back to Tesseract")
 
     image = Image.open(io.BytesIO(image_bytes))
     image = _preprocess(image)
