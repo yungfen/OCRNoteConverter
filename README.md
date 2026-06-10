@@ -19,8 +19,15 @@ On Ubuntu/Debian, replace the first line with `sudo apt install tesseract-ocr`.
 ## Run
 
 ```bash
-source .venv/bin/activate       # if not already active
-uvicorn app:app --reload
+./run.sh
+```
+
+This starts the server with hot reload (code changes apply without
+restarting) and accepts connections from your phone. Equivalent to:
+
+```bash
+source .venv/bin/activate
+uvicorn app:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 Open http://localhost:8000, drag in your note photos, and click

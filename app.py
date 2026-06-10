@@ -121,10 +121,14 @@ async def upload_images(files: List[UploadFile] = File(...)):
             continue
 
         if confidence < LOW_CONFIDENCE:
+            # Below this threshold the "cards" are mostly OCR garbage —
+            # skip the page rather than pollute the deck with junk.
             warnings.append(
-                f"{name}: scan quality is low (confidence {confidence:.0f}%). "
-                "Try better lighting, hold the camera flat, or rescan."
+                f"{name}: scan quality too low (confidence {confidence:.0f}%) — "
+                "page skipped. Try better lighting, hold the camera flat, "
+                "and photograph one page at a time."
             )
+            continue
 
         # Parse vocab entries
         entries = parse_vocab(ocr_text)
