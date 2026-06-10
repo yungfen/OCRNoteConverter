@@ -22,6 +22,20 @@ logging.basicConfig(level=logging.INFO)
 app = FastAPI(title="Vocab Flashcard App")
 
 
+def _lan_ip() -> str | None:
+    """Best-effort LAN IP so the phone URL can be printed at startup."""
+    import socket
+
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except OSError:
+        return None
+
+
 @app.on_event("startup")
 async def log_engine():
     engine = "Apple Vision" if vision_available() else "Tesseract"
@@ -30,6 +44,12 @@ async def log_engine():
         logging.warning(
             "Apple Vision not active — run 'pip install -r requirements.txt' "
             "in your virtualenv for much better handwriting OCR."
+        )
+    ip = _lan_ip()
+    if ip:
+        logging.info(
+            "On your phone (same Wi-Fi), open: http://%s:8000 "
+            "(requires --host 0.0.0.0)", ip
         )
 
 
