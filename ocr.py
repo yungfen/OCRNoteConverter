@@ -115,11 +115,6 @@ try:
 except Exception:  # pyobjc can raise more than ImportError on bad installs
     _VISION_AVAILABLE = False
 
-logging.getLogger(__name__).info(
-    "OCR engine: %s", "Apple Vision" if _VISION_AVAILABLE else "Tesseract"
-)
-
-
 def vision_available() -> bool:
     return _VISION_AVAILABLE
 

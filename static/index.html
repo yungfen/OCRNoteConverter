@@ -330,6 +330,7 @@
 <header>
   <span class="logo">📚</span>
   <h1>Vocab Flashcards</h1>
+  <div id="engineBadge" style="text-align:center; font-size:0.8rem; color:#8a97a5; margin-top:-6px;"></div>
 </header>
 
 <div class="spinner-overlay" id="spinnerOverlay">
@@ -468,6 +469,23 @@
       uploadBtn.disabled = false;
     }
   });
+
+  (async () => {
+    try {
+      const res = await fetch('/health');
+      const h = await res.json();
+      const badge = document.getElementById('engineBadge');
+      if (h.vision_available) {
+        badge.textContent = 'OCR engine: Apple Vision ✓ (best for handwriting)';
+        badge.style.color = '#2e7d32';
+      } else {
+        badge.textContent = h.platform === 'darwin'
+          ? '⚠️ OCR engine: Tesseract — Apple Vision not active, handwriting will be poor'
+          : 'OCR engine: Tesseract';
+        if (h.platform === 'darwin') badge.style.color = '#c62828';
+      }
+    } catch (e) { /* ignore */ }
+  })();
 
   document.getElementById('resetBtn').addEventListener('click', async () => {
     if (!confirm('Delete all saved cards? This cannot be undone.')) return;

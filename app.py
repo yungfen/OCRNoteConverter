@@ -17,7 +17,29 @@ from parser import parse_vocab
 # better to tell the user to retake the photo than show junk cards.
 LOW_CONFIDENCE = 45.0
 
+logging.basicConfig(level=logging.INFO)
+
 app = FastAPI(title="Vocab Flashcard App")
+
+
+@app.on_event("startup")
+async def log_engine():
+    engine = "Apple Vision" if vision_available() else "Tesseract"
+    logging.info("OCR engine: %s", engine)
+    if sys.platform == "darwin" and not vision_available():
+        logging.warning(
+            "Apple Vision not active — run 'pip install -r requirements.txt' "
+            "in your virtualenv for much better handwriting OCR."
+        )
+
+
+@app.get("/health")
+async def health():
+    return JSONResponse(content={
+        "ocr_engine": "Apple Vision" if vision_available() else "Tesseract",
+        "vision_available": vision_available(),
+        "platform": sys.platform,
+    })
 
 # Mount static files
 static_dir = Path(__file__).parent / "static"
