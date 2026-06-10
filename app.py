@@ -1,0 +1,121 @@
+import json
+import os
+from pathlib import Path
+from typing import List
+
+import pytesseract
+from fastapi import FastAPI, File, UploadFile
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from PIL import Image
+import io
+
+from parser import parse_vocab
+
+app = FastAPI(title="Vocab Flashcard App")
+
+# Mount static files
+static_dir = Path(__file__).parent / "static"
+static_dir.mkdir(exist_ok=True)
+app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+
+# Data directory and frequency store
+data_dir = Path(__file__).parent / "data"
+data_dir.mkdir(exist_ok=True)
+freq_file = data_dir / "vocab_freq.json"
+
+
+def load_freq() -> dict:
+    if freq_file.exists():
+        try:
+            with open(freq_file, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError):
+            return {}
+    return {}
+
+
+def save_freq(freq: dict):
+    with open(freq_file, "w", encoding="utf-8") as f:
+        json.dump(freq, f, ensure_ascii=False, indent=2)
+
+
+def normalize_word(word: str) -> str:
+    return word.strip().lower()
+
+
+@app.get("/")
+async def serve_ui():
+    index_path = static_dir / "index.html"
+    return FileResponse(str(index_path), media_type="text/html")
+
+
+@app.post("/upload")
+async def upload_images(files: List[UploadFile] = File(...)):
+    freq = load_freq()
+    all_cards = []
+
+    for upload in files:
+        contents = await upload.read()
+        try:
+            image = Image.open(io.BytesIO(contents))
+        except Exception:
+            continue
+
+        # Run OCR
+        try:
+            ocr_text = pytesseract.image_to_string(image)
+        except Exception as e:
+            continue
+
+        # Parse vocab entries
+        entries = parse_vocab(ocr_text)
+
+        for entry in entries:
+            word = entry["word"]
+            definition = entry["definition"]
+            key = normalize_word(word)
+
+            # Update frequency (count how many times this word has appeared)
+            if key in freq:
+                freq[key]["count"] += 1
+                # Keep most recent definition if different
+                if freq[key]["definition"] != definition:
+                    freq[key]["definition"] = definition
+            else:
+                freq[key] = {"word": word, "definition": definition, "count": 1}
+
+            all_cards.append({"word": word, "definition": definition, "key": key})
+
+    save_freq(freq)
+
+    # Build response cards with starred status
+    # A word is starred if it has appeared more than once (across all uploads/sessions)
+    seen_keys = set()
+    response_cards = []
+    for card in all_cards:
+        key = card["key"]
+        if key in seen_keys:
+            continue
+        seen_keys.add(key)
+        starred = freq.get(key, {}).get("count", 1) > 1
+        response_cards.append({
+            "word": freq[key]["word"],
+            "definition": freq[key]["definition"],
+            "starred": starred,
+        })
+
+    return JSONResponse(content={"cards": response_cards})
+
+
+@app.get("/cards")
+async def get_all_cards():
+    freq = load_freq()
+    cards = []
+    for key, data in freq.items():
+        cards.append({
+            "word": data["word"],
+            "definition": data["definition"],
+            "starred": data.get("count", 1) > 1,
+        })
+    return JSONResponse(content={"cards": cards})

@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vocab Flashcards</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy: #1a2e4a;
+      --navy-light: #2c4a6e;
+      --gold: #f5a623;
+      --gold-light: #ffd166;
+      --bg: #f0f4f8;
+      --card-bg: #ffffff;
+      --text: #1a2e4a;
+      --text-muted: #6b7c93;
+      --shadow: 0 4px 20px rgba(26,46,74,0.12);
+      --shadow-hover: 0 8px 32px rgba(26,46,74,0.2);
+      --radius: 16px;
+      --transition: 0.35s ease;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ---- HEADER ---- */
+    header {
+      background: var(--navy);
+      color: #fff;
+      padding: 18px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    header h1 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+    header .logo { font-size: 1.6rem; }
+
+    /* ---- MAIN ---- */
+    main {
+      flex: 1;
+      max-width: 720px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 32px 16px 48px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+
+    /* ---- UPLOAD AREA ---- */
+    .upload-section { display: flex; flex-direction: column; gap: 12px; }
+
+    .upload-zone {
+      border: 2.5px dashed #b0bec9;
+      border-radius: var(--radius);
+      background: var(--card-bg);
+      padding: 36px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color var(--transition), background var(--transition);
+      position: relative;
+    }
+    .upload-zone:hover, .upload-zone.drag-over {
+      border-color: var(--navy-light);
+      background: #e8f0fb;
+    }
+    .upload-zone input[type="file"] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .upload-icon { font-size: 2.8rem; margin-bottom: 10px; }
+    .upload-zone p { color: var(--text-muted); font-size: 0.95rem; line-height: 1.5; }
+    .upload-zone strong { color: var(--navy); }
+
+    .upload-btn {
+      align-self: center;
+      background: var(--navy);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 12px 32px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background var(--transition), transform 0.1s;
+    }
+    .upload-btn:hover { background: var(--navy-light); }
+    .upload-btn:active { transform: scale(0.97); }
+    .upload-btn:disabled { background: #b0bec9; cursor: not-allowed; }
+
+    .file-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 0 4px;
+    }
+    .file-chip {
+      background: #e2ecf5;
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 0.82rem;
+      color: var(--navy);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .file-chip .remove {
+      cursor: pointer;
+      color: var(--text-muted);
+      font-weight: 700;
+      font-size: 0.9rem;
+      line-height: 1;
+    }
+    .file-chip .remove:hover { color: #c0392b; }
+
+    /* ---- SPINNER ---- */
+    .spinner-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(240,244,248,0.82);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .spinner-overlay.active { display: flex; }
+    .spinner {
+      width: 52px; height: 52px;
+      border: 5px solid #d0dae6;
+      border-top-color: var(--navy);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner-label { font-size: 1rem; color: var(--navy); font-weight: 600; }
+
+    /* ---- FLASHCARD SECTION ---- */
+    .flashcard-section { display: flex; flex-direction: column; gap: 20px; }
+
+    /* ---- TOOLBAR ---- */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .toolbar-btn {
+      background: var(--card-bg);
+      border: 2px solid #d0dae6;
+      border-radius: 10px;
+      padding: 8px 18px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--navy);
+      cursor: pointer;
+      transition: background var(--transition), border-color var(--transition), color var(--transition);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .toolbar-btn:hover { background: #e8f0fb; border-color: var(--navy-light); }
+    .toolbar-btn.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+    .card-counter {
+      margin-left: auto;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    /* ---- EMPTY STATE ---- */
+    .empty-state {
+      text-align: center;
+      padding: 56px 24px;
+      color: var(--text-muted);
+    }
+    .empty-state .empty-icon { font-size: 3.5rem; margin-bottom: 14px; }
+    .empty-state h2 { font-size: 1.2rem; color: var(--navy); margin-bottom: 8px; }
+    .empty-state p { font-size: 0.95rem; line-height: 1.6; }
+
+    /* ---- FLIP CARD ---- */
+    .card-viewport {
+      perspective: 1200px;
+      width: 100%;
+      min-height: 280px;
+    }
+    .flip-card {
+      width: 100%;
+      min-height: 280px;
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: pointer;
+      border-radius: var(--radius);
+    }
+    .flip-card.flipped { transform: rotateY(180deg); }
+
+    .card-face {
+      position: absolute;
+      inset: 0;
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 36px 32px;
+      transition: box-shadow var(--transition);
+    }
+    .flip-card:hover .card-face { box-shadow: var(--shadow-hover); }
+
+    .card-face.back {
+      transform: rotateY(180deg);
+      background: #f7faff;
+      border: 2px solid #d8e6f5;
+    }
+
+    .card-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    .card-word {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--navy);
+      text-align: center;
+      line-height: 1.25;
+      word-break: break-word;
+    }
+
+    .card-definition {
+      font-size: 1.15rem;
+      color: #334e68;
+      text-align: center;
+      line-height: 1.6;
+      word-break: break-word;
+    }
+
+    .star-badge {
+      position: absolute;
+      top: 16px;
+      right: 18px;
+      font-size: 1.5rem;
+      filter: drop-shadow(0 1px 2px rgba(0,0,0,0.15));
+    }
+
+    .tap-hint {
+      position: absolute;
+      bottom: 14px;
+      font-size: 0.75rem;
+      color: #a0b0c0;
+      letter-spacing: 0.05em;
+    }
+
+    /* ---- NAVIGATION ---- */
+    .nav-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+    }
+    .nav-btn {
+      background: var(--card-bg);
+      border: 2px solid #d0dae6;
+      border-radius: 50%;
+      width: 48px;
+      height: 48px;
+      font-size: 1.3rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background var(--transition), border-color var(--transition);
+      color: var(--navy);
+    }
+    .nav-btn:hover:not(:disabled) { background: var(--navy); color: #fff; border-color: var(--navy); }
+    .nav-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    .progress-dots {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: center;
+      max-width: 300px;
+    }
+    .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #c9d8e8;
+      transition: background var(--transition), transform var(--transition);
+      cursor: pointer;
+    }
+    .dot.active { background: var(--navy); transform: scale(1.4); }
+    .dot.starred { background: var(--gold); }
+    .dot.active.starred { background: var(--gold); transform: scale(1.4); }
+
+    /* ---- RESPONSIVE ---- */
+    @media (max-width: 480px) {
+      .card-word { font-size: 1.5rem; }
+      .card-definition { font-size: 1rem; }
+      header h1 { font-size: 1.1rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="logo">📚</span>
+  <h1>Vocab Flashcards</h1>
+</header>
+
+<div class="spinner-overlay" id="spinnerOverlay">
+  <div class="spinner"></div>
+  <div class="spinner-label">Running OCR…</div>
+</div>
+
+<main>
+  <!-- Upload Section -->
+  <section class="upload-section" id="uploadSection">
+    <div class="upload-zone" id="uploadZone">
+      <input type="file" id="fileInput" accept="image/*" multiple />
+      <div class="upload-icon">🖼️</div>
+      <p><strong>Drop images here</strong> or click to browse</p>
+      <p>Supports JPG, PNG, WEBP, TIFF — multiple files OK</p>
+    </div>
+    <div class="file-list" id="fileList"></div>
+    <button class="upload-btn" id="uploadBtn" disabled>Extract &amp; Build Cards</button>
+  </section>
+
+  <!-- Flashcard Section -->
+  <section class="flashcard-section" id="flashcardSection" style="display:none;">
+    <div class="toolbar" id="toolbar">
+      <button class="toolbar-btn" id="shuffleBtn" title="Shuffle cards">🔀 Shuffle</button>
+      <button class="toolbar-btn" id="filterBtn" title="Toggle starred filter">⭐ Starred Only</button>
+      <button class="toolbar-btn" id="loadAllBtn" title="Load all saved cards">📂 All Saved</button>
+      <span class="card-counter" id="cardCounter">0 / 0</span>
+    </div>
+
+    <div id="cardArea"></div>
+
+    <div class="nav-row" id="navRow" style="display:none;">
+      <button class="nav-btn" id="prevBtn" title="Previous card">&#8592;</button>
+      <div class="progress-dots" id="progressDots"></div>
+      <button class="nav-btn" id="nextBtn" title="Next card">&#8594;</button>
+    </div>
+  </section>
+</main>
+
+<script>
+  // ---- STATE ----
+  let allCards = [];       // all cards (master list)
+  let displayCards = [];   // currently shown cards (filtered/shuffled)
+  let currentIndex = 0;
+  let showStarredOnly = false;
+  let selectedFiles = [];
+
+  // ---- ELEMENTS ----
+  const uploadZone    = document.getElementById('uploadZone');
+  const fileInput     = document.getElementById('fileInput');
+  const fileListEl    = document.getElementById('fileList');
+  const uploadBtn     = document.getElementById('uploadBtn');
+  const spinnerOverlay= document.getElementById('spinnerOverlay');
+  const flashcardSection = document.getElementById('flashcardSection');
+  const cardArea      = document.getElementById('cardArea');
+  const cardCounter   = document.getElementById('cardCounter');
+  const prevBtn       = document.getElementById('prevBtn');
+  const nextBtn       = document.getElementById('nextBtn');
+  const progressDots  = document.getElementById('progressDots');
+  const navRow        = document.getElementById('navRow');
+  const shuffleBtn    = document.getElementById('shuffleBtn');
+  const filterBtn     = document.getElementById('filterBtn');
+  const loadAllBtn    = document.getElementById('loadAllBtn');
+
+  // ---- DRAG & DROP ----
+  uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+  uploadZone.addEventListener('drop', e => {
+    e.preventDefault();
+    uploadZone.classList.remove('drag-over');
+    addFiles(Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/')));
+  });
+  fileInput.addEventListener('change', () => {
+    addFiles(Array.from(fileInput.files));
+    fileInput.value = '';
+  });
+
+  function addFiles(files) {
+    files.forEach(f => {
+      if (!selectedFiles.find(s => s.name === f.name && s.size === f.size)) {
+        selectedFiles.push(f);
+      }
+    });
+    renderFileList();
+  }
+
+  function renderFileList() {
+    fileListEl.innerHTML = '';
+    selectedFiles.forEach((f, i) => {
+      const chip = document.createElement('div');
+      chip.className = 'file-chip';
+      chip.innerHTML = `📄 ${f.name} <span class="remove" data-i="${i}">✕</span>`;
+      fileListEl.appendChild(chip);
+    });
+    uploadBtn.disabled = selectedFiles.length === 0;
+  }
+
+  fileListEl.addEventListener('click', e => {
+    if (e.target.classList.contains('remove')) {
+      selectedFiles.splice(parseInt(e.target.dataset.i), 1);
+      renderFileList();
+    }
+  });
+
+  // ---- UPLOAD & OCR ----
+  uploadBtn.addEventListener('click', async () => {
+    if (selectedFiles.length === 0) return;
+    spinnerOverlay.classList.add('active');
+    uploadBtn.disabled = true;
+
+    try {
+      const form = new FormData();
+      selectedFiles.forEach(f => form.append('files', f));
+
+      const res = await fetch('/upload', { method: 'POST', body: form });
+      if (!res.ok) throw new Error(`Server error: ${res.status}`);
+      const data = await res.json();
+
+      // Merge new cards with existing (deduplicate by word key)
+      mergeCards(data.cards);
+      applyFilter();
+      flashcardSection.style.display = 'flex';
+      flashcardSection.style.flexDirection = 'column';
+
+      // Clear uploaded files after success
+      selectedFiles = [];
+      renderFileList();
+    } catch (err) {
+      alert('Upload failed: ' + err.message);
+    } finally {
+      spinnerOverlay.classList.remove('active');
+      uploadBtn.disabled = false;
+    }
+  });
+
+  function mergeCards(newCards) {
+    newCards.forEach(nc => {
+      const key = nc.word.trim().toLowerCase();
+      const existing = allCards.findIndex(c => c.word.trim().toLowerCase() === key);
+      if (existing >= 0) {
+        allCards[existing] = nc; // update (may have changed starred status)
+      } else {
+        allCards.push(nc);
+      }
+    });
+  }
+
+  // ---- LOAD ALL SAVED ----
+  loadAllBtn.addEventListener('click', async () => {
+    spinnerOverlay.classList.add('active');
+    try {
+      const res = await fetch('/cards');
+      const data = await res.json();
+      allCards = data.cards;
+      applyFilter();
+      flashcardSection.style.display = 'flex';
+      flashcardSection.style.flexDirection = 'column';
+    } catch(err) {
+      alert('Failed to load cards: ' + err.message);
+    } finally {
+      spinnerOverlay.classList.remove('active');
+    }
+  });
+
+  // ---- FILTER ----
+  filterBtn.addEventListener('click', () => {
+    showStarredOnly = !showStarredOnly;
+    filterBtn.classList.toggle('active', showStarredOnly);
+    filterBtn.textContent = showStarredOnly ? '⭐ Starred Only' : '⭐ Starred Only';
+    applyFilter();
+  });
+
+  function applyFilter() {
+    displayCards = showStarredOnly ? allCards.filter(c => c.starred) : [...allCards];
+    currentIndex = 0;
+    renderAll();
+  }
+
+  // ---- SHUFFLE ----
+  shuffleBtn.addEventListener('click', () => {
+    for (let i = displayCards.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [displayCards[i], displayCards[j]] = [displayCards[j], displayCards[i]];
+    }
+    currentIndex = 0;
+    renderAll();
+  });
+
+  // ---- NAVIGATION ----
+  prevBtn.addEventListener('click', () => {
+    if (currentIndex > 0) { currentIndex--; renderCard(); updateNav(); }
+  });
+  nextBtn.addEventListener('click', () => {
+    if (currentIndex < displayCards.length - 1) { currentIndex++; renderCard(); updateNav(); }
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowLeft') prevBtn.click();
+    else if (e.key === 'ArrowRight') nextBtn.click();
+    else if (e.key === ' ' || e.key === 'Enter') {
+      const fc = document.querySelector('.flip-card');
+      if (fc) fc.classList.toggle('flipped');
+      e.preventDefault();
+    }
+  });
+
+  // ---- RENDER ----
+  function renderAll() {
+    renderCard();
+    updateNav();
+    renderDots();
+  }
+
+  function renderCard() {
+    cardArea.innerHTML = '';
+
+    if (displayCards.length === 0) {
+      const msg = showStarredOnly
+        ? 'No starred cards yet. Words that appear in multiple uploads get a ⭐ star.'
+        : 'No cards found. Upload images of your vocab notes to get started.';
+      cardArea.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">${showStarredOnly ? '⭐' : '📝'}</div>
+          <h2>${showStarredOnly ? 'No Starred Cards' : 'No Cards Yet'}</h2>
+          <p>${msg}</p>
+        </div>`;
+      navRow.style.display = 'none';
+      cardCounter.textContent = '0 / 0';
+      return;
+    }
+
+    const card = displayCards[currentIndex];
+    const viewport = document.createElement('div');
+    viewport.className = 'card-viewport';
+
+    const flipCard = document.createElement('div');
+    flipCard.className = 'flip-card';
+    flipCard.innerHTML = `
+      <div class="card-face front">
+        ${card.starred ? '<span class="star-badge">⭐</span>' : ''}
+        <div class="card-label">Word</div>
+        <div class="card-word">${escapeHtml(card.word)}</div>
+        <span class="tap-hint">Tap to reveal definition</span>
+      </div>
+      <div class="card-face back">
+        ${card.starred ? '<span class="star-badge">⭐</span>' : ''}
+        <div class="card-label">Definition</div>
+        <div class="card-definition">${escapeHtml(card.definition)}</div>
+        <span class="tap-hint">Tap to flip back</span>
+      </div>
+    `;
+    flipCard.addEventListener('click', () => flipCard.classList.toggle('flipped'));
+
+    viewport.appendChild(flipCard);
+    cardArea.appendChild(viewport);
+
+    navRow.style.display = 'flex';
+    cardCounter.textContent = `${currentIndex + 1} / ${displayCards.length}`;
+    renderDots();
+  }
+
+  function updateNav() {
+    prevBtn.disabled = currentIndex === 0;
+    nextBtn.disabled = currentIndex >= displayCards.length - 1;
+    cardCounter.textContent = displayCards.length
+      ? `${currentIndex + 1} / ${displayCards.length}` : '0 / 0';
+  }
+
+  function renderDots() {
+    progressDots.innerHTML = '';
+    const max = Math.min(displayCards.length, 20); // limit dots to avoid clutter
+    for (let i = 0; i < max; i++) {
+      const dot = document.createElement('div');
+      dot.className = 'dot' +
+        (i === currentIndex ? ' active' : '') +
+        (displayCards[i] && displayCards[i].starred ? ' starred' : '');
+      dot.title = displayCards[i] ? displayCards[i].word : '';
+      dot.addEventListener('click', () => { currentIndex = i; renderCard(); updateNav(); });
+      progressDots.appendChild(dot);
+    }
+    if (displayCards.length > 20) {
+      const more = document.createElement('span');
+      more.style.cssText = 'font-size:0.75rem;color:var(--text-muted);margin-left:4px;';
+      more.textContent = `+${displayCards.length - 20}`;
+      progressDots.appendChild(more);
+    }
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  // ---- INIT: Try loading saved cards on page load ----
+  (async () => {
+    try {
+      const res = await fetch('/cards');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.cards && data.cards.length > 0) {
+          allCards = data.cards;
+          applyFilter();
+          flashcardSection.style.display = 'flex';
+          flashcardSection.style.flexDirection = 'column';
+        }
+      }
+    } catch (_) { /* ignore */ }
+  })();
+</script>
+</body>
+</html>
