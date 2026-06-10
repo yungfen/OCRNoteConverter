@@ -119,11 +119,12 @@ def vision_available() -> bool:
     return _VISION_AVAILABLE
 
 
-def extract_text(image_bytes: bytes) -> tuple[str, float]:
-    """Return (text, confidence 0-100) for the best OCR pass over the image."""
+def extract_text(image_bytes: bytes) -> tuple[str, float, str]:
+    """Return (text, confidence 0-100, engine) for the best OCR pass."""
     if _VISION_AVAILABLE:
         try:
-            return ocr_vision.extract_text(image_bytes)
+            text, conf = ocr_vision.extract_text(image_bytes)
+            return text, conf, "vision"
         except Exception:
             logging.exception("Vision OCR failed; falling back to Tesseract")
 
@@ -140,4 +141,4 @@ def extract_text(image_bytes: bytes) -> tuple[str, float]:
         if conf > best_conf:
             best_text, best_conf = text, conf
 
-    return best_text, max(best_conf, 0.0)
+    return best_text, max(best_conf, 0.0), "tesseract"

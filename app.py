@@ -13,9 +13,10 @@ import sys
 from ocr import extract_text, vision_available
 from parser import parse_vocab
 
-# Below this average Tesseract confidence the result is mostly garbage;
-# better to tell the user to retake the photo than show junk cards.
-LOW_CONFIDENCE = 45.0
+# Below these average confidences the result is mostly garbage; better to
+# tell the user to retake the photo than show junk cards. Vision reports
+# conservative scores on handwriting, so its threshold is lower.
+LOW_CONFIDENCE = {"tesseract": 45.0, "vision": 28.0}
 
 logging.basicConfig(level=logging.INFO)
 
@@ -114,13 +115,13 @@ async def upload_images(files: List[UploadFile] = File(...)):
         contents = await upload.read()
         name = upload.filename or "image"
         try:
-            ocr_text, confidence = extract_text(contents)
+            ocr_text, confidence, engine = extract_text(contents)
         except Exception:
             logging.exception("OCR failed for %s", name)
             warnings.append(f"{name}: could not be read as an image.")
             continue
 
-        if confidence < LOW_CONFIDENCE:
+        if confidence < LOW_CONFIDENCE[engine]:
             # Below this threshold the "cards" are mostly OCR garbage —
             # skip the page rather than pollute the deck with junk.
             warnings.append(
