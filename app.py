@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 
 import sys
 
+import ocr_claude
 from dictionary import check_word, reference_definition
 from ocr import extract_text, vision_available
 from parser import parse_vocab
@@ -49,8 +50,7 @@ def _lan_ip() -> str | None:
 
 @app.on_event("startup")
 async def log_engine():
-    engine = "Apple Vision" if vision_available() else "Tesseract"
-    logging.info("OCR engine: %s", engine)
+    logging.info("OCR engine: %s", _engine_name())
     if sys.platform == "darwin" and not vision_available():
         logging.warning(
             "Apple Vision not active — run 'pip install -r requirements.txt' "
@@ -64,10 +64,17 @@ async def log_engine():
         )
 
 
+def _engine_name() -> str:
+    if ocr_claude.available():
+        return "Claude AI"
+    return "Apple Vision" if vision_available() else "Tesseract"
+
+
 @app.get("/health")
 async def health():
     return JSONResponse(content={
-        "ocr_engine": "Apple Vision" if vision_available() else "Tesseract",
+        "ocr_engine": _engine_name(),
+        "claude_available": ocr_claude.available(),
         "vision_available": vision_available(),
         "platform": sys.platform,
     })
@@ -114,7 +121,8 @@ async def upload_images(files: List[UploadFile] = File(...)):
     all_cards = []
     warnings = []
 
-    if sys.platform == "darwin" and not vision_available():
+    if (sys.platform == "darwin" and not vision_available()
+            and not ocr_claude.available()):
         warnings.append(
             "Apple Vision OCR is not active — handwriting accuracy will be poor. "
             "Run: pip install -r requirements.txt inside your virtualenv, "
@@ -124,26 +132,42 @@ async def upload_images(files: List[UploadFile] = File(...)):
     for upload in files:
         contents = await upload.read()
         name = upload.filename or "image"
-        try:
-            ocr_text, confidence, engine = extract_text(contents)
-        except Exception:
-            logging.exception("OCR failed for %s", name)
-            warnings.append(f"{name}: could not be read as an image.")
-            continue
+        entries = None
 
-        if confidence < LOW_CONFIDENCE[engine]:
-            # Below this threshold the "cards" are mostly OCR garbage —
-            # skip the page rather than pollute the deck with junk.
-            engine_label = "Apple Vision" if engine == "vision" else "Tesseract"
-            warnings.append(
-                f"{name}: scan quality too low (confidence {confidence:.0f}%, "
-                f"engine: {engine_label}) — page skipped. Try better lighting, "
-                "hold the camera flat, and photograph one page at a time."
-            )
-            continue
+        # Claude vision reads the page like a person — structured entries,
+        # no parsing needed. Best quality for handwriting.
+        if ocr_claude.available():
+            try:
+                entries = ocr_claude.extract_entries(contents)
+            except Exception:
+                logging.exception(
+                    "Claude OCR failed for %s; falling back", name
+                )
 
-        # Parse vocab entries
-        entries = parse_vocab(ocr_text)
+        if entries is None:
+            try:
+                ocr_text, confidence, engine = extract_text(contents)
+            except Exception:
+                logging.exception("OCR failed for %s", name)
+                warnings.append(f"{name}: could not be read as an image.")
+                continue
+
+            if confidence < LOW_CONFIDENCE[engine]:
+                # Below this threshold the "cards" are mostly OCR garbage —
+                # skip the page rather than pollute the deck with junk.
+                engine_label = (
+                    "Apple Vision" if engine == "vision" else "Tesseract"
+                )
+                warnings.append(
+                    f"{name}: scan quality too low (confidence "
+                    f"{confidence:.0f}%, engine: {engine_label}) — page "
+                    "skipped. Try better lighting, hold the camera flat, "
+                    "and photograph one page at a time."
+                )
+                continue
+
+            entries = parse_vocab(ocr_text)
+
         if not entries:
             warnings.append(f"{name}: no vocab entries found on this page.")
             continue

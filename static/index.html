@@ -476,7 +476,10 @@
       const res = await fetch('/health');
       const h = await res.json();
       const badge = document.getElementById('engineBadge');
-      if (h.vision_available) {
+      if (h.claude_available) {
+        badge.textContent = 'OCR engine: Claude AI ✨ (reads handwriting like a person)';
+        badge.style.color = '#2e7d32';
+      } else if (h.vision_available) {
         badge.textContent = 'OCR engine: Apple Vision ✓ (best for handwriting)';
         badge.style.color = '#2e7d32';
       } else {

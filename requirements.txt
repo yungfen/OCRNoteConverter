@@ -7,3 +7,4 @@ pyobjc-framework-Vision; sys_platform == "darwin"
 pyobjc-framework-Quartz; sys_platform == "darwin"
 pillow-heif
 pyobjc-framework-CoreServices; sys_platform == "darwin"
+anthropic

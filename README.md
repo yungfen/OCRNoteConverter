@@ -16,6 +16,21 @@ pip install -r requirements.txt
 
 On Ubuntu/Debian, replace the first line with `sudo apt install tesseract-ocr`.
 
+## Best quality: Claude AI reading (recommended)
+
+With an Anthropic API key, photos are read by Claude's vision model — the
+same capability that reads handwriting in the Claude app. It understands
+two-column layouts, wrapped definitions, and mixed English/Chinese
+handwriting, and returns clean cards directly. Without a key, the app
+falls back to Apple Vision (macOS) or Tesseract.
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...   # get one at console.anthropic.com
+```
+
+Cost is roughly a cent or two per page. To cut cost ~5x at slightly lower
+accuracy: `export VOCAB_OCR_MODEL=claude-haiku-4-5`.
+
 ## Run
 
 ```bash
