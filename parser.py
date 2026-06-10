@@ -119,8 +119,21 @@ def parse_vocab(text: str) -> List[Dict[str, str]]:
                 if len(word) <= 120 and len(definition) >= _MIN_DEF_LEN:
                     definition = _clean_cjk_spacing(definition)
                     cards.append({'word': word, 'definition': definition})
+            elif cards and _looks_like_continuation(sub):
+                # Wrapped definition: notebook lines often continue onto the
+                # next line (e.g. "...to get an" / "advantage").
+                cards[-1]['definition'] += ' ' + _clean_cjk_spacing(sub)
 
     return cards
+
+
+def _looks_like_continuation(line: str) -> bool:
+    """A line with no delimiter that likely continues the previous definition:
+    starts lowercase / with a bracket, or is a short trailing fragment."""
+    if re.match(r'^[a-z(\[]', line):
+        return True
+    # Short fragment of 1-3 words with no delimiter (e.g. "advantage")
+    return len(line.split()) <= 3
 
 
 def _clean_cjk_spacing(text: str) -> str:

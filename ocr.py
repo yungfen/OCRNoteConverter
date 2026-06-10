@@ -97,8 +97,24 @@ def _ocr_with_confidence(image: Image.Image, psm: int) -> tuple[str, float]:
     return text, avg_conf
 
 
+# Prefer Apple Vision (Live Text engine) on macOS — dramatically better at
+# handwriting than Tesseract. Falls back to Tesseract elsewhere.
+try:
+    import ocr_vision
+
+    _VISION_AVAILABLE = True
+except ImportError:
+    _VISION_AVAILABLE = False
+
+
 def extract_text(image_bytes: bytes) -> tuple[str, float]:
     """Return (text, confidence 0-100) for the best OCR pass over the image."""
+    if _VISION_AVAILABLE:
+        try:
+            return ocr_vision.extract_text(image_bytes)
+        except Exception:
+            pass  # fall through to Tesseract
+
     image = Image.open(io.BytesIO(image_bytes))
     image = _preprocess(image)
     image = _fix_rotation(image)
