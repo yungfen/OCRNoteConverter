@@ -610,7 +610,6 @@
         ${card.starred ? '<span class="star-badge">⭐</span>' : ''}
         <div class="card-label">Word</div>
         <div class="card-word">${escapeHtml(card.word)}</div>
-        ${card.corrected_from ? `<div style="color:#2e7d32; font-size:0.8rem; margin-top:8px;">✏️ 已自動修正（原辨識：${escapeHtml(card.corrected_from)}）</div>` : ''}
         ${card.verified === false ? `<div style="color:#c62828; font-size:0.85rem; margin-top:8px;">⚠️ 字典查無此字${card.suggestion ? ` — 你是不是要寫 <b>${escapeHtml(card.suggestion)}</b>?` : ''}</div>` : ''}
         <span class="tap-hint">Tap to reveal definition</span>
       </div>
