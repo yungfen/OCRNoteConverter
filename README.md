@@ -8,6 +8,7 @@ a ⭐ star — those are the ones you're likely to forget.
 
 ```bash
 brew install tesseract          # OCR engine
+brew install tesseract-lang     # Chinese (and other) language packs
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
