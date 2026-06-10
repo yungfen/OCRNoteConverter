@@ -20,6 +20,23 @@ MAX_SIDE = 4000
 PSM_CANDIDATES = (6, 4)
 
 
+def _detect_languages() -> str:
+    """Use English + Traditional/Simplified Chinese when the language packs
+    are installed; otherwise fall back to English only."""
+    try:
+        available = set(pytesseract.get_languages(config=""))
+    except Exception:
+        return "eng"
+    langs = ["eng"]
+    for lang in ("chi_tra", "chi_sim"):
+        if lang in available:
+            langs.append(lang)
+    return "+".join(langs)
+
+
+_LANGS = _detect_languages()
+
+
 def _preprocess(image: Image.Image) -> Image.Image:
     # Respect EXIF orientation from phone cameras before anything else.
     image = ImageOps.exif_transpose(image)
@@ -57,7 +74,7 @@ def _fix_rotation(image: Image.Image) -> Image.Image:
 def _ocr_with_confidence(image: Image.Image, psm: int) -> tuple[str, float]:
     config = f"--psm {psm}"
     data = pytesseract.image_to_data(
-        image, config=config, output_type=pytesseract.Output.DICT
+        image, lang=_LANGS, config=config, output_type=pytesseract.Output.DICT
     )
     words = []
     confs = []

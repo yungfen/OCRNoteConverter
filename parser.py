@@ -14,12 +14,26 @@ _MERGED_SPLIT_RE = re.compile(
 )
 
 
+# English word(s) directly followed by a CJK definition on the same line,
+# e.g. "capacious 容量大的" or "disdain for 鄙視" — no delimiter needed.
+_CJK_SPLIT_RE = re.compile(
+    r"^([A-Za-z][A-Za-z\s'\-\.]{0,60}?)\s*([　-〿一-鿿＀-￯].*)$"
+)
+
+
 def _split_entry(line: str):
     """
     Try to split a single line into (word, definition) using priority delimiters.
     Returns a (word, definition) tuple or None.
-    Priority order: ' - ', ':', '=', 2+ spaces.
+    Priority order: English+CJK boundary, ' - ', ':', '=', 2+ spaces.
     """
+    # 0. English word followed by CJK definition (e.g. "shun 避免")
+    m_cjk = _CJK_SPLIT_RE.match(line)
+    if m_cjk:
+        word, definition = m_cjk.group(1).strip(), m_cjk.group(2).strip()
+        if word and definition:
+            return word, definition
+
     # 1. dash with spaces (most common in vocab notes)
     if ' - ' in line:
         parts = line.split(' - ', 1)
@@ -103,9 +117,21 @@ def parse_vocab(text: str) -> List[Dict[str, str]]:
                 word, definition = result
                 # Basic sanity: word shouldn't be suspiciously long (likely noise)
                 if len(word) <= 120 and len(definition) >= _MIN_DEF_LEN:
+                    definition = _clean_cjk_spacing(definition)
                     cards.append({'word': word, 'definition': definition})
 
     return cards
+
+
+def _clean_cjk_spacing(text: str) -> str:
+    """Remove the spurious spaces Tesseract inserts between CJK characters
+    and around CJK punctuation (e.g. '容量 大 的' -> '容量大的')."""
+    cjk = r'[　-〿一-鿿＀-￯;,:]'
+    prev = None
+    while prev != text:
+        prev = text
+        text = re.sub(rf'({cjk})\s+({cjk})', r'\1\2', text)
+    return text
 
 
 def _try_split_merged(line: str) -> List[str]:
