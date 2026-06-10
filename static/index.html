@@ -610,12 +610,14 @@
         ${card.starred ? '<span class="star-badge">⭐</span>' : ''}
         <div class="card-label">Word</div>
         <div class="card-word">${escapeHtml(card.word)}</div>
+        ${card.verified === false ? `<div style="color:#c62828; font-size:0.85rem; margin-top:8px;">⚠️ 字典查無此字${card.suggestion ? ` — 你是不是要寫 <b>${escapeHtml(card.suggestion)}</b>?` : ''}</div>` : ''}
         <span class="tap-hint">Tap to reveal definition</span>
       </div>
       <div class="card-face back">
         ${card.starred ? '<span class="star-badge">⭐</span>' : ''}
         <div class="card-label">Definition</div>
         <div class="card-definition">${escapeHtml(card.definition)}</div>
+        ${card.ref_def ? `<div style="font-size:0.78rem; color:#8a97a5; margin-top:10px; line-height:1.5;">📖 ${escapeHtml(card.ref_def)}</div>` : ''}
         <span class="tap-hint">Tap to flip back</span>
       </div>
     `;

@@ -10,8 +10,18 @@ from fastapi.staticfiles import StaticFiles
 
 import sys
 
+from dictionary import check_word, reference_definition
 from ocr import extract_text, vision_available
 from parser import parse_vocab
+
+
+def decorate(card: dict) -> dict:
+    """Attach dictionary cross-check info to a card."""
+    verified, suggestion = check_word(card["word"])
+    card["verified"] = verified
+    card["suggestion"] = suggestion
+    card["ref_def"] = reference_definition(card["word"])
+    return card
 
 # Below these average confidences the result is mostly garbage; better to
 # tell the user to retake the photo than show junk cards. Vision reports
@@ -165,11 +175,11 @@ async def upload_images(files: List[UploadFile] = File(...)):
             continue
         seen_keys.add(key)
         starred = freq.get(key, {}).get("count", 1) > 1
-        response_cards.append({
+        response_cards.append(decorate({
             "word": freq[key]["word"],
             "definition": freq[key]["definition"],
             "starred": starred,
-        })
+        }))
 
     return JSONResponse(content={"cards": response_cards, "warnings": warnings})
 
@@ -186,9 +196,9 @@ async def get_all_cards():
     freq = load_freq()
     cards = []
     for key, data in freq.items():
-        cards.append({
+        cards.append(decorate({
             "word": data["word"],
             "definition": data["definition"],
             "starred": data.get("count", 1) > 1,
-        })
+        }))
     return JSONResponse(content={"cards": cards})
