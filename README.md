@@ -24,12 +24,26 @@ two-column layouts, wrapped definitions, and mixed English/Chinese
 handwriting, and returns clean cards directly. Without a key, the app
 falls back to Apple Vision (macOS) or Tesseract.
 
+Put the key in a `.env` file (loaded automatically by `./run.sh`,
+gitignored, and never enters your shell history):
+
 ```bash
-export ANTHROPIC_API_KEY=sk-ant-...   # get one at console.anthropic.com
+echo 'ANTHROPIC_API_KEY=sk-ant-...' > .env   # key from console.anthropic.com
+chmod 600 .env                                # readable only by you
 ```
 
 Cost is roughly a cent or two per page. To cut cost ~5x at slightly lower
-accuracy: `export VOCAB_OCR_MODEL=claude-haiku-4-5`.
+accuracy, add `VOCAB_OCR_MODEL=claude-haiku-4-5` to `.env`.
+
+### Key safety notes
+
+- The key stays server-side only — it is never sent to the browser/phone.
+- The server listens on your local network so your phone can connect;
+  anyone on the same Wi-Fi could upload images and spend your API credits.
+  On trusted home Wi-Fi this is fine; on public Wi-Fi run localhost-only:
+  `VOCAB_HOST=127.0.0.1 ./run.sh`
+- Set a monthly spend limit at console.anthropic.com → Billing → Limits.
+- If the key ever leaks, revoke and re-issue it in the console.
 
 ## Run
 
