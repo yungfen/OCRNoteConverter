@@ -365,10 +365,11 @@
     <div id="cardArea"></div>
 
     <div class="nav-row" id="navRow" style="display:none;">
-      <button class="nav-btn" id="prevBtn" title="Previous card">&#8592;</button>
+      <button class="nav-btn" id="prevBtn" title="Previous card" style="display:none;">&#8592;</button>
       <div class="progress-dots" id="progressDots"></div>
-      <button class="nav-btn" id="nextBtn" title="Next card">&#8594;</button>
+      <button class="nav-btn" id="nextBtn" title="Next card" style="display:none;">&#8594;</button>
     </div>
+    <div style="text-align:center; color:#8a97a5; font-size:0.8rem;">← 滑動切換卡片 →</div>
   </section>
 </main>
 
@@ -610,18 +611,54 @@
         ${card.starred ? '<span class="star-badge">⭐</span>' : ''}
         <div class="card-label">Word</div>
         <div class="card-word">${escapeHtml(card.word)}</div>
-        ${card.verified === false ? `<div style="color:#c62828; font-size:0.85rem; margin-top:8px;">⚠️ 字典查無此字${card.suggestion ? ` — 你是不是要寫 <b>${escapeHtml(card.suggestion)}</b>?` : ''}</div>` : ''}
         <span class="tap-hint">Tap to reveal definition</span>
       </div>
       <div class="card-face back">
         ${card.starred ? '<span class="star-badge">⭐</span>' : ''}
         <div class="card-label">Definition</div>
         <div class="card-definition">${escapeHtml(card.definition)}</div>
-        ${card.ref_def ? `<div style="font-size:0.78rem; color:#8a97a5; margin-top:10px; line-height:1.5;">📖 ${escapeHtml(card.ref_def)}</div>` : ''}
         <span class="tap-hint">Tap to flip back</span>
       </div>
     `;
-    flipCard.addEventListener('click', () => flipCard.classList.toggle('flipped'));
+    // Swipe left = next card, swipe right = previous; tap = flip.
+    // Translate lives on the viewport so it can't fight the 3D flip
+    // transform on the card itself.
+    viewport.style.touchAction = 'pan-y';
+    let startX = null, dx = 0, swiping = false;
+    flipCard.addEventListener('pointerdown', e => {
+      startX = e.clientX; dx = 0; swiping = false;
+      flipCard.setPointerCapture(e.pointerId);
+    });
+    flipCard.addEventListener('pointermove', e => {
+      if (startX === null) return;
+      dx = e.clientX - startX;
+      if (Math.abs(dx) > 12) swiping = true;
+      if (swiping) {
+        viewport.style.transition = 'none';
+        viewport.style.transform = `translateX(${dx}px) rotate(${dx / 50}deg)`;
+      }
+    });
+    const endSwipe = () => {
+      if (startX === null) return;
+      viewport.style.transition = 'transform 0.22s ease-out';
+      const canNext = currentIndex < displayCards.length - 1;
+      const canPrev = currentIndex > 0;
+      if (dx < -60 && canNext) {
+        viewport.style.transform = 'translateX(-120%) rotate(-6deg)';
+        setTimeout(() => { currentIndex++; renderCard(); updateNav(); }, 160);
+      } else if (dx > 60 && canPrev) {
+        viewport.style.transform = 'translateX(120%) rotate(6deg)';
+        setTimeout(() => { currentIndex--; renderCard(); updateNav(); }, 160);
+      } else {
+        viewport.style.transform = '';
+      }
+      startX = null;
+    };
+    flipCard.addEventListener('pointerup', endSwipe);
+    flipCard.addEventListener('pointercancel', endSwipe);
+    flipCard.addEventListener('click', () => {
+      if (!swiping) flipCard.classList.toggle('flipped');
+    });
 
     viewport.appendChild(flipCard);
     cardArea.appendChild(viewport);

@@ -10,12 +10,7 @@ from fastapi.staticfiles import StaticFiles
 
 import sys
 
-from dictionary import (
-    autocorrect_definition,
-    autocorrect_word,
-    check_word,
-    reference_definition,
-)
+from dictionary import check_word, reference_definition
 from ocr import extract_text, vision_available
 from parser import parse_vocab
 
@@ -154,9 +149,11 @@ async def upload_images(files: List[UploadFile] = File(...)):
             continue
 
         for entry in entries:
-            # Auto-correct OCR misspellings before the entry becomes a card
-            word, corrected_from = autocorrect_word(entry["word"])
-            definition = autocorrect_definition(entry["definition"])
+            # Keep the user's content verbatim — auto-replacing OCR'd text
+            # fabricates notes the user never wrote. Fidelity > tidiness;
+            # accuracy comes from the OCR engine, not post-hoc rewriting.
+            word = entry["word"]
+            definition = entry["definition"]
             key = normalize_word(word)
 
             # Update frequency (count how many times this word has appeared)
@@ -167,8 +164,6 @@ async def upload_images(files: List[UploadFile] = File(...)):
                     freq[key]["definition"] = definition
             else:
                 freq[key] = {"word": word, "definition": definition, "count": 1}
-            if corrected_from:
-                freq[key]["corrected_from"] = corrected_from
 
             all_cards.append({"word": word, "definition": definition, "key": key})
 
