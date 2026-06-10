@@ -134,10 +134,11 @@ async def upload_images(files: List[UploadFile] = File(...)):
         if confidence < LOW_CONFIDENCE[engine]:
             # Below this threshold the "cards" are mostly OCR garbage —
             # skip the page rather than pollute the deck with junk.
+            engine_label = "Apple Vision" if engine == "vision" else "Tesseract"
             warnings.append(
-                f"{name}: scan quality too low (confidence {confidence:.0f}%) — "
-                "page skipped. Try better lighting, hold the camera flat, "
-                "and photograph one page at a time."
+                f"{name}: scan quality too low (confidence {confidence:.0f}%, "
+                f"engine: {engine_label}) — page skipped. Try better lighting, "
+                "hold the camera flat, and photograph one page at a time."
             )
             continue
 
