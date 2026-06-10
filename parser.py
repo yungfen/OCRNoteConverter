@@ -41,8 +41,8 @@ def _split_entry(line: str):
         if word and definition:
             return word, definition
 
-    # 2. colon (with or without trailing space, but word must not be empty)
-    m = re.match(r'^([^:=]{1,80}):\s+(.+)$', line)
+    # 2. colon — ASCII or fullwidth (Vision OCR often emits '：')
+    m = re.match(r'^([^:：=]{1,80})[:：]\s*(.+)$', line)
     if m:
         word, definition = m.group(1).strip(), m.group(2).strip()
         if word and definition:
@@ -133,6 +133,8 @@ def parse_vocab(text: str) -> List[Dict[str, str]]:
             if result is not None:
                 word, definition = result
                 # Basic sanity: word shouldn't be suspiciously long (likely noise)
+                # Strip leading delimiter remnants (e.g. '： (an act of)')
+                definition = re.sub(r'^[\s:：=\-、.．]+', '', definition)
                 if (len(word) <= 120 and len(definition) >= _MIN_DEF_LEN
                         and _is_valid_entry(word, definition)):
                     definition = _clean_cjk_spacing(definition)
@@ -140,7 +142,9 @@ def parse_vocab(text: str) -> List[Dict[str, str]]:
             elif cards and _looks_like_continuation(sub):
                 # Wrapped definition: notebook lines often continue onto the
                 # next line (e.g. "...to get an" / "advantage").
-                cards[-1]['definition'] += ' ' + _clean_cjk_spacing(sub)
+                # Cap growth so one card can't swallow half the page.
+                if len(cards[-1]['definition']) < 160:
+                    cards[-1]['definition'] += ' ' + _clean_cjk_spacing(sub)
 
     return cards
 
@@ -151,6 +155,10 @@ def _looks_like_continuation(line: str) -> bool:
     # Must be mostly real content, not OCR digit/symbol soup
     content = re.findall(r"[A-Za-z　-〿一-鿿]", line)
     if len(content) < len(line) * 0.6:
+        return False
+    # A delimiter means it's probably its own (possibly garbled) entry,
+    # not a continuation — don't glue it onto the previous card.
+    if re.search(r'[:：=]', line):
         return False
     if re.match(r'^[a-z(\[]', line):
         return True
@@ -178,9 +186,13 @@ def _try_split_merged(line: str) -> List[str]:
     plausible definition segment (ends with a letter/punctuation) and is
     followed by a capitalised or regular word.
     """
-    # Pattern: content, then a word (possibly Title-cased) right before ' - '
-    # e.g. "ubiquitous - present everywhere ephemeral - lasting a short time"
-    parts = re.split(r'(?<=\S)\s+(?=[A-Za-z][a-z]+ - |[A-Za-z][a-z]+: )', line)
+    # Pattern: content, then a word right before a delimiter — catches both
+    # OCR-merged lines and adjacent-column bleed in two-page photos, e.g.
+    # "...to get an compel: forcing gra" or "x - y ephemeral - lasting"
+    parts = re.split(
+        r"(?<=\S)\s+(?=[A-Za-z][A-Za-z'\-]{2,}\s*[:：=]\s*\S|[A-Za-z][a-z]+ - )",
+        line,
+    )
     if len(parts) > 1:
         return parts
     return [line]
