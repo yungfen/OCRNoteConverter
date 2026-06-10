@@ -455,7 +455,7 @@
 
       // Merge new cards with existing (deduplicate by word key)
       mergeCards(data.cards);
-      applyFilter();
+      setView(showStarredOnly);
       flashcardSection.style.display = 'flex';
       flashcardSection.style.flexDirection = 'column';
 
@@ -514,14 +514,23 @@
     });
   }
 
-  // ---- LOAD ALL SAVED ----
+  // ---- VIEW SWITCH (mutually exclusive: Starred Only ⟷ All Saved) ----
+  function setView(starredOnly) {
+    showStarredOnly = starredOnly;
+    filterBtn.classList.toggle('active', starredOnly);
+    loadAllBtn.classList.toggle('active', !starredOnly);
+    applyFilter();
+  }
+
+  filterBtn.addEventListener('click', () => setView(true));
+
   loadAllBtn.addEventListener('click', async () => {
     spinnerOverlay.classList.add('active');
     try {
       const res = await fetch('/cards');
       const data = await res.json();
       allCards = data.cards;
-      applyFilter();
+      setView(false);
       flashcardSection.style.display = 'flex';
       flashcardSection.style.flexDirection = 'column';
     } catch(err) {
@@ -529,14 +538,6 @@
     } finally {
       spinnerOverlay.classList.remove('active');
     }
-  });
-
-  // ---- FILTER ----
-  filterBtn.addEventListener('click', () => {
-    showStarredOnly = !showStarredOnly;
-    filterBtn.classList.toggle('active', showStarredOnly);
-    filterBtn.textContent = showStarredOnly ? '⭐ Starred Only' : '⭐ Starred Only';
-    applyFilter();
   });
 
   function applyFilter() {
@@ -671,7 +672,7 @@
         const data = await res.json();
         if (data.cards && data.cards.length > 0) {
           allCards = data.cards;
-          applyFilter();
+          setView(false);
           flashcardSection.style.display = 'flex';
           flashcardSection.style.flexDirection = 'column';
         }
