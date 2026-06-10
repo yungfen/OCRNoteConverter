@@ -348,6 +348,7 @@
     </div>
     <div class="file-list" id="fileList"></div>
     <button class="upload-btn" id="uploadBtn" disabled>Extract &amp; Build Cards</button>
+    <div id="warningBox" style="display:none; background:#fff8e1; border:1px solid #f0c040; border-radius:10px; padding:12px 16px; color:#7a5c00; font-size:0.9rem; line-height:1.6;"></div>
   </section>
 
   <!-- Flashcard Section -->
@@ -448,6 +449,8 @@
       if (!res.ok) throw new Error(`Server error: ${res.status}`);
       const data = await res.json();
 
+      showWarnings(data.warnings || []);
+
       // Merge new cards with existing (deduplicate by word key)
       mergeCards(data.cards);
       applyFilter();
@@ -464,6 +467,13 @@
       uploadBtn.disabled = false;
     }
   });
+
+  function showWarnings(warnings) {
+    const box = document.getElementById('warningBox');
+    if (!warnings.length) { box.style.display = 'none'; return; }
+    box.innerHTML = warnings.map(w => `<div>⚠️ ${w}</div>`).join('');
+    box.style.display = 'block';
+  }
 
   function mergeCards(newCards) {
     newCards.forEach(nc => {

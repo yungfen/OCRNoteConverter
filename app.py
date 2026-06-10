@@ -3,14 +3,16 @@ import os
 from pathlib import Path
 from typing import List
 
-import pytesseract
 from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from PIL import Image
-import io
 
+from ocr import extract_text
 from parser import parse_vocab
+
+# Below this average Tesseract confidence the result is mostly garbage;
+# better to tell the user to retake the photo than show junk cards.
+LOW_CONFIDENCE = 45.0
 
 app = FastAPI(title="Vocab Flashcard App")
 
@@ -54,22 +56,28 @@ async def serve_ui():
 async def upload_images(files: List[UploadFile] = File(...)):
     freq = load_freq()
     all_cards = []
+    warnings = []
 
     for upload in files:
         contents = await upload.read()
+        name = upload.filename or "image"
         try:
-            image = Image.open(io.BytesIO(contents))
+            ocr_text, confidence = extract_text(contents)
         except Exception:
+            warnings.append(f"{name}: could not be read as an image.")
             continue
 
-        # Run OCR
-        try:
-            ocr_text = pytesseract.image_to_string(image)
-        except Exception as e:
-            continue
+        if confidence < LOW_CONFIDENCE:
+            warnings.append(
+                f"{name}: scan quality is low (confidence {confidence:.0f}%). "
+                "Try better lighting, hold the camera flat, or rescan."
+            )
 
         # Parse vocab entries
         entries = parse_vocab(ocr_text)
+        if not entries:
+            warnings.append(f"{name}: no vocab entries found on this page.")
+            continue
 
         for entry in entries:
             word = entry["word"]
@@ -105,7 +113,7 @@ async def upload_images(files: List[UploadFile] = File(...)):
             "starred": starred,
         })
 
-    return JSONResponse(content={"cards": response_cards})
+    return JSONResponse(content={"cards": response_cards, "warnings": warnings})
 
 
 @app.get("/cards")
