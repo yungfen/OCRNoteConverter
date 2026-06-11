@@ -317,11 +317,164 @@
     .dot.starred { background: var(--gold); }
     .dot.active.starred { background: var(--gold); transform: scale(1.4); }
 
+    .streak-line {
+      margin-top: 14px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    /* ---- PRACTICE / QUIZ MODES ---- */
+    .practice-section, .quiz-section { display: flex; flex-direction: column; gap: 18px; }
+
+    .mode-top { display: flex; align-items: center; gap: 12px; }
+    .mode-exit {
+      background: var(--card-bg);
+      border: 2px solid #d0dae6;
+      border-radius: 50%;
+      width: 38px; height: 38px;
+      font-size: 1rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color var(--transition), color var(--transition);
+    }
+    .mode-exit:hover { border-color: #c0392b; color: #c0392b; }
+    .mode-counter {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+    .mode-hint {
+      text-align: center;
+      color: #8a97a5;
+      font-size: 0.82rem;
+      line-height: 1.6;
+    }
+
+    .practice-progress {
+      flex: 1;
+      height: 10px;
+      background: #d8e2ec;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .practice-progress-fill {
+      height: 100%;
+      width: 0;
+      background: linear-gradient(90deg, var(--navy-light), var(--navy));
+      border-radius: 6px;
+      transition: width 0.3s ease;
+    }
+
+    .practice-viewport { position: relative; }
+    .swipe-stamp {
+      position: absolute;
+      top: 18px;
+      padding: 4px 14px;
+      border-radius: 10px;
+      font-size: 1.25rem;
+      font-weight: 800;
+      border: 3px solid;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 5;
+      background: rgba(255,255,255,0.88);
+    }
+    .swipe-stamp.know { left: 14px; color: #2e7d32; border-color: #2e7d32; transform: rotate(-10deg); }
+    .swipe-stamp.learn { right: 14px; color: #ef6c00; border-color: #ef6c00; transform: rotate(10deg); }
+
+    .practice-flash {
+      position: absolute;
+      inset: 0;
+      border-radius: var(--radius);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 4;
+      transition: opacity 0.18s ease;
+    }
+    .practice-flash.show { opacity: 1; }
+
+    .practice-actions { display: flex; justify-content: center; gap: 26px; }
+    .judge-btn {
+      border: 2px solid;
+      border-radius: 50%;
+      width: 58px; height: 58px;
+      font-size: 1.4rem;
+      cursor: pointer;
+      background: var(--card-bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow);
+      transition: transform 0.1s, background var(--transition);
+    }
+    .judge-btn:active { transform: scale(0.92); }
+    .judge-btn.learn { color: #ef6c00; border-color: #ef6c00; }
+    .judge-btn.learn:hover { background: #fff3e6; }
+    .judge-btn.know { color: #2e7d32; border-color: #2e7d32; }
+    .judge-btn.know:hover { background: #e9f7ea; }
+
+    .summary-card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 40px 28px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+    .summary-icon { font-size: 3rem; }
+    .summary-card h2 { color: var(--navy); font-size: 1.3rem; }
+    .summary-stat { font-size: 1rem; color: #334e68; line-height: 1.5; }
+    .summary-score { font-size: 2.4rem; font-weight: 800; color: var(--navy); }
+    .summary-card .upload-btn { margin-top: 12px; }
+
+    .quiz-question-card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 30px 24px;
+      text-align: center;
+    }
+    .quiz-word {
+      font-size: 1.7rem;
+      font-weight: 800;
+      color: var(--navy);
+      word-break: break-word;
+      line-height: 1.3;
+    }
+    .quiz-options { display: flex; flex-direction: column; gap: 10px; }
+    .quiz-option {
+      background: var(--card-bg);
+      border: 2px solid #d0dae6;
+      border-radius: 12px;
+      padding: 14px 16px;
+      font-size: 0.98rem;
+      color: #334e68;
+      text-align: left;
+      cursor: pointer;
+      line-height: 1.5;
+      word-break: break-word;
+      transition: border-color var(--transition), background var(--transition);
+    }
+    .quiz-option:hover:not(:disabled) { border-color: var(--navy-light); background: #e8f0fb; }
+    .quiz-option:disabled { cursor: default; }
+    .quiz-option.correct { background: #e9f7ea; border-color: #2e7d32; color: #1d5e22; font-weight: 600; }
+    .quiz-option.wrong { background: #fdecea; border-color: #c0392b; color: #8e2418; }
+
     /* ---- RESPONSIVE ---- */
     @media (max-width: 480px) {
       .card-word { font-size: 1.5rem; }
       .card-definition { font-size: 1rem; }
       header h1 { font-size: 1.1rem; }
+      .quiz-word { font-size: 1.35rem; }
     }
   </style>
 </head>
@@ -358,6 +511,9 @@
       <button class="toolbar-btn" id="shuffleBtn" title="Shuffle cards">🔀 Shuffle</button>
       <button class="toolbar-btn" id="filterBtn" title="Toggle starred filter">⭐ Starred Only</button>
       <button class="toolbar-btn" id="loadAllBtn" title="Load all saved cards">📂 All Saved</button>
+      <button class="toolbar-btn" id="dueBtn" title="Cards due for review today">📅 Due Today</button>
+      <button class="toolbar-btn" id="practiceBtn" title="Swipe practice — 右滑記得、左滑還不熟">🎯 Practice</button>
+      <button class="toolbar-btn" id="quizBtn" title="Multiple-choice quiz">📝 Quiz</button>
       <button class="toolbar-btn" id="resetBtn" title="Delete all saved cards">🗑️ Reset</button>
       <span class="card-counter" id="cardCounter">0 / 0</span>
     </div>
@@ -371,6 +527,32 @@
     </div>
     <div style="text-align:center; color:#8a97a5; font-size:0.8rem;">← 滑動切換卡片 →</div>
   </section>
+
+  <!-- Practice Section (Quizlet-style swipe) -->
+  <section class="practice-section" id="practiceSection" style="display:none;">
+    <div class="mode-top">
+      <button class="mode-exit" id="practiceExitBtn" title="結束練習">✕</button>
+      <div class="practice-progress"><div class="practice-progress-fill" id="practiceProgressFill"></div></div>
+      <span class="mode-counter" id="practiceCounter">0 / 0</span>
+    </div>
+    <div id="practiceCardArea"></div>
+    <div class="practice-actions" id="practiceActions">
+      <button class="judge-btn learn" id="learnBtn" title="還不熟">✗</button>
+      <button class="judge-btn know" id="knowBtn" title="記得">✓</button>
+    </div>
+    <div class="mode-hint" id="practiceHint">點卡片翻面 ・ 右滑＝記得 ✓ ・ 左滑＝還不熟 ✗<br>還不熟的卡片會再出現，直到全部記得為止</div>
+  </section>
+
+  <!-- Quiz Section (multiple choice) -->
+  <section class="quiz-section" id="quizSection" style="display:none;">
+    <div class="mode-top">
+      <button class="mode-exit" id="quizExitBtn" title="結束測驗">✕</button>
+      <span class="mode-counter" id="quizProgressLabel"></span>
+      <span class="mode-counter" id="quizScoreLabel" style="margin-left:auto;"></span>
+    </div>
+    <div id="quizArea"></div>
+    <div class="mode-hint">選出正確的定義</div>
+  </section>
 </main>
 
 <script>
@@ -378,10 +560,14 @@
   let allCards = [];       // all cards (master list)
   let displayCards = [];   // currently shown cards (filtered/shuffled)
   let currentIndex = 0;
-  let showStarredOnly = false;
+  let viewMode = 'all';    // 'all' | 'starred' | 'due' (mutually exclusive views)
+  let uiMode = 'browse';   // 'browse' | 'practice' | 'quiz'
   let selectedFiles = [];
+  let practice = null;     // active swipe-practice session state
+  let quiz = null;         // active multiple-choice session state
 
   // ---- ELEMENTS ----
+  const uploadSection = document.getElementById('uploadSection');
   const uploadZone    = document.getElementById('uploadZone');
   const fileInput     = document.getElementById('fileInput');
   const fileListEl    = document.getElementById('fileList');
@@ -397,6 +583,17 @@
   const shuffleBtn    = document.getElementById('shuffleBtn');
   const filterBtn     = document.getElementById('filterBtn');
   const loadAllBtn    = document.getElementById('loadAllBtn');
+  const dueBtn        = document.getElementById('dueBtn');
+  const practiceSection = document.getElementById('practiceSection');
+  const practiceCardArea = document.getElementById('practiceCardArea');
+  const practiceProgressFill = document.getElementById('practiceProgressFill');
+  const practiceCounter = document.getElementById('practiceCounter');
+  const practiceActions = document.getElementById('practiceActions');
+  const practiceHint  = document.getElementById('practiceHint');
+  const quizSection   = document.getElementById('quizSection');
+  const quizArea      = document.getElementById('quizArea');
+  const quizProgressLabel = document.getElementById('quizProgressLabel');
+  const quizScoreLabel = document.getElementById('quizScoreLabel');
 
   // ---- DRAG & DROP ----
   uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
@@ -456,7 +653,7 @@
 
       // Merge new cards with existing (deduplicate by word key)
       mergeCards(data.cards);
-      setView(showStarredOnly);
+      setView(viewMode);
       flashcardSection.style.display = 'flex';
       flashcardSection.style.flexDirection = 'column';
 
@@ -518,23 +715,25 @@
     });
   }
 
-  // ---- VIEW SWITCH (mutually exclusive: Starred Only ⟷ All Saved) ----
-  function setView(starredOnly) {
-    showStarredOnly = starredOnly;
-    filterBtn.classList.toggle('active', starredOnly);
-    loadAllBtn.classList.toggle('active', !starredOnly);
+  // ---- VIEW SWITCH (mutually exclusive: Starred Only / All Saved / Due Today) ----
+  function setView(mode) {
+    viewMode = mode;
+    filterBtn.classList.toggle('active', mode === 'starred');
+    loadAllBtn.classList.toggle('active', mode === 'all');
+    dueBtn.classList.toggle('active', mode === 'due');
     applyFilter();
   }
 
-  filterBtn.addEventListener('click', () => setView(true));
+  filterBtn.addEventListener('click', () => setView('starred'));
 
-  loadAllBtn.addEventListener('click', async () => {
+  // Both saved-card views re-fetch so SRS due dates are always fresh.
+  async function loadSaved(mode) {
     spinnerOverlay.classList.add('active');
     try {
       const res = await fetch('/cards');
       const data = await res.json();
       allCards = data.cards;
-      setView(false);
+      setView(mode);
       flashcardSection.style.display = 'flex';
       flashcardSection.style.flexDirection = 'column';
     } catch(err) {
@@ -542,10 +741,19 @@
     } finally {
       spinnerOverlay.classList.remove('active');
     }
-  });
+  }
+  loadAllBtn.addEventListener('click', () => loadSaved('all'));
+  dueBtn.addEventListener('click', () => loadSaved('due'));
+
+  // Due = never reviewed (no due date yet) or scheduled date has arrived.
+  function isDue(card) {
+    return !card.due || new Date(card.due) <= new Date();
+  }
 
   function applyFilter() {
-    displayCards = showStarredOnly ? allCards.filter(c => c.starred) : [...allCards];
+    if (viewMode === 'starred')   displayCards = allCards.filter(c => c.starred);
+    else if (viewMode === 'due')  displayCards = allCards.filter(isDue);
+    else                          displayCards = [...allCards];
     currentIndex = 0;
     renderAll();
   }

@@ -1,12 +1,14 @@
 import json
 import logging
 import os
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import List
 
 from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 
 import sys
 
@@ -109,6 +111,71 @@ def normalize_word(word: str) -> str:
     return word.strip().lower()
 
 
+# ---- Spaced repetition (lightweight) ----
+# Streak-based intervals: each consecutive correct answer doubles the gap,
+# capped at the last entry. A wrong answer resets to "see it again tomorrow".
+SRS_INTERVALS_DAYS = [1, 2, 4, 8, 16, 32]
+
+
+def srs_state(entry: dict) -> dict:
+    """Per-word SRS state, tolerating entries saved before SRS existed."""
+    srs = entry.get("srs") or {}
+    return {
+        "streak": srs.get("streak", 0),
+        "last_review": srs.get("last_review"),
+        "due": srs.get("due"),
+    }
+
+
+def card_payload(entry: dict) -> dict:
+    """Build the API card shape for one freq-store entry."""
+    srs = srs_state(entry)
+    return decorate({
+        "word": entry["word"],
+        "definition": entry["definition"],
+        "starred": entry.get("count", 1) > 1,
+        "corrected_from": entry.get("corrected_from", ""),
+        "streak": srs["streak"],
+        "due": srs["due"],
+    })
+
+
+class ReviewResult(BaseModel):
+    word: str
+    correct: bool
+
+
+class ReviewPayload(BaseModel):
+    results: List[ReviewResult]
+
+
+@app.post("/review")
+async def review(payload: ReviewPayload):
+    """Record practice/quiz results and reschedule each word."""
+    freq = load_freq()
+    now = datetime.now(timezone.utc)
+    updated = 0
+    for result in payload.results:
+        entry = freq.get(normalize_word(result.word))
+        if entry is None:
+            continue  # unknown word (e.g. deck was reset mid-session)
+        srs = srs_state(entry)
+        if result.correct:
+            srs["streak"] += 1
+            days = SRS_INTERVALS_DAYS[
+                min(srs["streak"], len(SRS_INTERVALS_DAYS)) - 1
+            ]
+        else:
+            srs["streak"] = 0
+            days = 1
+        srs["last_review"] = now.isoformat()
+        srs["due"] = (now + timedelta(days=days)).isoformat()
+        entry["srs"] = srs
+        updated += 1
+    save_freq(freq)
+    return JSONResponse(content={"ok": True, "updated": updated})
+
+
 @app.get("/")
 async def serve_ui():
     index_path = static_dir / "index.html"
@@ -202,13 +269,7 @@ async def upload_images(files: List[UploadFile] = File(...)):
         if key in seen_keys:
             continue
         seen_keys.add(key)
-        starred = freq.get(key, {}).get("count", 1) > 1
-        response_cards.append(decorate({
-            "word": freq[key]["word"],
-            "definition": freq[key]["definition"],
-            "starred": starred,
-            "corrected_from": freq[key].get("corrected_from", ""),
-        }))
+        response_cards.append(card_payload(freq[key]))
 
     return JSONResponse(content={"cards": response_cards, "warnings": warnings})
 
@@ -223,12 +284,5 @@ async def reset_cards():
 @app.get("/cards")
 async def get_all_cards():
     freq = load_freq()
-    cards = []
-    for key, data in freq.items():
-        cards.append(decorate({
-            "word": data["word"],
-            "definition": data["definition"],
-            "starred": data.get("count", 1) > 1,
-            "corrected_from": data.get("corrected_from", ""),
-        }))
+    cards = [card_payload(data) for data in freq.values()]
     return JSONResponse(content={"cards": cards})
