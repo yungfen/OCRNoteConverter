@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OCR Note Converter — Demo</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy: #1a2e4a;
+      --navy-light: #2c4a6e;
+      --gold: #f5a623;
+      --gold-light: #ffd166;
+      --bg: #f0f4f8;
+      --card-bg: #ffffff;
+      --text: #1a2e4a;
+      --text-muted: #6b7c93;
+      --shadow: 0 4px 20px rgba(26,46,74,0.12);
+      --radius: 16px;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* HEADER */
+    header {
+      background: var(--navy);
+      color: #fff;
+      padding: 18px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    header h1 { font-size: 1.4rem; font-weight: 700; letter-spacing: 0.02em; }
+    header .logo { font-size: 1.6rem; }
+    .engine-badge {
+      margin-left: auto;
+      background: rgba(255,255,255,0.15);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+    }
+
+    /* DEMO BANNER */
+    .demo-banner {
+      background: linear-gradient(135deg, #2c4a6e 0%, #1a2e4a 100%);
+      color: #fff;
+      text-align: center;
+      padding: 12px 20px;
+      font-size: 0.85rem;
+    }
+    .demo-banner strong { color: var(--gold-light); }
+
+    main {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 32px 16px 60px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+
+    /* SECTION TITLES (demo only) */
+    .section-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    /* UPLOAD ZONE */
+    .upload-zone {
+      border: 2.5px dashed #b0bec9;
+      border-radius: var(--radius);
+      background: var(--card-bg);
+      padding: 36px 24px;
+      text-align: center;
+      box-shadow: var(--shadow);
+    }
+    .upload-zone .icon { font-size: 2.6rem; margin-bottom: 10px; }
+    .upload-zone p { color: var(--text-muted); font-size: 0.95rem; }
+    .upload-zone .hint { font-size: 0.8rem; margin-top: 6px; color: #aab; }
+    .upload-btn {
+      display: inline-block;
+      margin-top: 16px;
+      background: var(--navy);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 11px 28px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* WARNING BOX */
+    .warning-box {
+      background: #fff8e1;
+      border: 1.5px solid #ffe082;
+      border-radius: 12px;
+      padding: 14px 18px;
+      font-size: 0.88rem;
+      color: #7a5800;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    /* TOOLBAR */
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+    .toolbar-btn {
+      background: var(--card-bg);
+      border: 1.5px solid #d0d9e4;
+      border-radius: 10px;
+      padding: 8px 16px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text);
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .toolbar-btn.active {
+      background: var(--navy);
+      color: #fff;
+      border-color: var(--navy);
+    }
+    .toolbar-btn.danger {
+      border-color: #ffb3b3;
+      color: #c0392b;
+    }
+    .toolbar-btn.danger:hover { background: #fff0f0; }
+    .spacer { flex: 1; }
+
+    /* CARD DECK */
+    .deck-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      padding: 0 2px;
+    }
+    .deck-info strong { color: var(--text); }
+
+    .card-viewport {
+      position: relative;
+      height: 260px;
+      user-select: none;
+    }
+    .flashcard {
+      width: 100%;
+      height: 100%;
+      perspective: 1000px;
+    }
+    .flashcard-inner {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 0.45s ease;
+    }
+    .flashcard.flipped .flashcard-inner { transform: rotateY(180deg); }
+    .card-face {
+      position: absolute;
+      inset: 0;
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backface-visibility: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px;
+      text-align: center;
+      cursor: pointer;
+    }
+    .card-face.back { transform: rotateY(180deg); }
+    .card-word {
+      font-size: 2.2rem;
+      font-weight: 700;
+      color: var(--navy);
+      margin-bottom: 8px;
+    }
+    .card-hint { font-size: 0.78rem; color: var(--text-muted); margin-top: 12px; }
+    .card-star { font-size: 1.2rem; position: absolute; top: 16px; right: 20px; }
+    .card-definition { font-size: 1.25rem; color: var(--text); line-height: 1.6; }
+    .card-streak {
+      position: absolute;
+      bottom: 16px;
+      right: 20px;
+      background: #e8f4fd;
+      border-radius: 20px;
+      padding: 4px 10px;
+      font-size: 0.75rem;
+      color: #1a6fa8;
+      font-weight: 600;
+    }
+
+    /* NAV ARROWS */
+    .card-nav {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      margin-top: 16px;
+    }
+    .nav-btn {
+      background: var(--card-bg);
+      border: 1.5px solid #d0d9e4;
+      border-radius: 50%;
+      width: 44px;
+      height: 44px;
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+    }
+    .nav-counter { font-size: 0.9rem; color: var(--text-muted); align-self: center; padding: 0 8px; }
+
+    /* PRACTICE MODE */
+    .practice-area {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 28px 24px;
+    }
+    .progress-bar-wrap {
+      background: #e4eaf1;
+      border-radius: 8px;
+      height: 8px;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--gold) 0%, #ff9800 100%);
+      border-radius: 8px;
+      width: 40%;
+      transition: width 0.4s ease;
+    }
+    .practice-card {
+      text-align: center;
+      padding: 20px 0 24px;
+    }
+    .practice-word { font-size: 2rem; font-weight: 700; color: var(--navy); }
+    .practice-swipe-hint {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-top: 20px;
+    }
+    .swipe-know { color: #27ae60; font-weight: 600; }
+    .swipe-learning { color: #e74c3c; font-weight: 600; }
+
+    /* QUIZ MODE */
+    .quiz-area {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 28px 24px;
+    }
+    .quiz-question { font-size: 1.5rem; font-weight: 700; color: var(--navy); margin-bottom: 20px; text-align: center; }
+    .quiz-options { display: flex; flex-direction: column; gap: 10px; }
+    .quiz-option {
+      border: 1.5px solid #d0d9e4;
+      border-radius: 10px;
+      padding: 14px 18px;
+      cursor: pointer;
+      font-size: 0.95rem;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .quiz-option:hover { background: #f0f4f8; border-color: var(--navy-light); }
+    .quiz-option.correct { background: #eafaf1; border-color: #27ae60; color: #1e8449; font-weight: 600; }
+    .quiz-option.wrong { background: #fdf0f0; border-color: #e74c3c; color: #c0392b; }
+    .quiz-score { text-align: right; font-size: 0.85rem; color: var(--text-muted); margin-top: 12px; }
+
+    /* CARD GRID (All Saved) */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 14px;
+    }
+    .mini-card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      padding: 18px 16px;
+    }
+    .mini-card .word { font-size: 1.05rem; font-weight: 700; color: var(--navy); }
+    .mini-card .def { font-size: 0.85rem; color: var(--text-muted); margin-top: 6px; line-height: 1.5; }
+    .mini-card .star { float: right; }
+
+    /* FEATURE PILLS */
+    .features {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .feature-pill {
+      background: var(--navy);
+      color: #fff;
+      border-radius: 20px;
+      padding: 8px 16px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* TABS (demo navigation) */
+    .demo-tabs {
+      display: flex;
+      gap: 4px;
+      background: #e4eaf1;
+      border-radius: 12px;
+      padding: 4px;
+    }
+    .demo-tab {
+      flex: 1;
+      text-align: center;
+      padding: 8px 4px;
+      border-radius: 9px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--text-muted);
+      transition: background 0.2s, color 0.2s;
+    }
+    .demo-tab.active {
+      background: var(--card-bg);
+      color: var(--navy);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    }
+
+    .demo-section { display: none; }
+    .demo-section.active { display: block; }
+
+    hr.divider { border: none; border-top: 1.5px solid #e4eaf1; }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="logo">📚</span>
+  <h1>Vocab Flashcards</h1>
+  <span class="engine-badge">✨ Claude AI</span>
+</header>
+
+<div class="demo-banner">
+  This is an <strong>interactive demo</strong>. Upload your own notes at <strong>localhost:8000</strong> to use the real app.
+</div>
+
+<main>
+
+  <!-- FEATURE PILLS -->
+  <div>
+    <div class="section-label">Features</div>
+    <div class="features">
+      <span class="feature-pill">📷 Photo upload</span>
+      <span class="feature-pill">🤖 Claude AI OCR</span>
+      <span class="feature-pill">⭐ Repeat-word detection</span>
+      <span class="feature-pill">🔄 Flip cards</span>
+      <span class="feature-pill">👆 Swipe gestures</span>
+      <span class="feature-pill">🧠 Spaced repetition</span>
+      <span class="feature-pill">🏋️ Practice mode</span>
+      <span class="feature-pill">📝 Quiz mode</span>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- UPLOAD ZONE -->
+  <div>
+    <div class="section-label">Step 1 — Upload your note photo</div>
+    <div class="upload-zone">
+      <div class="icon">🖼️</div>
+      <p>Drag &amp; drop note photos here, or tap to choose</p>
+      <p class="hint">JPEG · PNG · HEIC &nbsp;·&nbsp; Multiple pages OK &nbsp;·&nbsp; Rotated photos auto-corrected</p>
+      <button class="upload-btn" onclick="simulateUpload()">Extract &amp; Build Cards</button>
+    </div>
+  </div>
+
+  <!-- WARNING EXAMPLE -->
+  <div class="warning-box" id="warnBox" style="display:none;">
+    ⚠️ &nbsp;<span>IMG_blurry.jpg: scan quality too low — page skipped. Try better lighting and hold the camera flat.</span>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- DEMO TABS -->
+  <div>
+    <div class="section-label">Step 2 — Study your cards</div>
+    <div class="demo-tabs">
+      <div class="demo-tab active" onclick="showTab('flashcard')">Flashcards</div>
+      <div class="demo-tab" onclick="showTab('practice')">Practice</div>
+      <div class="demo-tab" onclick="showTab('quiz')">Quiz</div>
+      <div class="demo-tab" onclick="showTab('saved')">All Saved</div>
+    </div>
+  </div>
+
+  <!-- TOOLBAR -->
+  <div class="toolbar">
+    <button class="toolbar-btn" onclick="toggleBtn(this)">⭐ Starred Only</button>
+    <button class="toolbar-btn active" onclick="toggleBtn(this)">📚 All Saved</button>
+    <button class="toolbar-btn" onclick="toggleBtn(this)">📅 Due Today</button>
+    <button class="toolbar-btn" onclick="alert('Shuffled!')">🔀 Shuffle</button>
+    <span class="spacer"></span>
+    <button class="toolbar-btn danger" onclick="alert('Reset — all frequency data cleared.')">🗑️ Reset</button>
+  </div>
+
+  <!-- FLASHCARD SECTION -->
+  <div class="demo-section active" id="tab-flashcard">
+    <div class="deck-info">
+      <span>Card <strong id="cardNum">1</strong> of <strong>6</strong></span>
+      <span style="font-size:0.8rem">Tap card to flip &nbsp;·&nbsp; Swipe to navigate</span>
+    </div>
+    <div class="card-viewport" style="margin-top:12px;">
+      <div class="flashcard" id="fc" onclick="flipCard()">
+        <div class="flashcard-inner">
+          <div class="card-face front">
+            <span class="card-star" id="cardStar">⭐</span>
+            <div class="card-word" id="cardWord">ephemeral</div>
+            <div class="card-hint">Tap to reveal definition</div>
+          </div>
+          <div class="card-face back">
+            <div class="card-definition" id="cardDef">短暫的；瞬間即逝的</div>
+            <div class="card-streak" id="cardStreak">🔥 streak 3</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-nav">
+      <button class="nav-btn" onclick="prevCard()">←</button>
+      <span class="nav-counter" id="navCounter">1 / 6</span>
+      <button class="nav-btn" onclick="nextCard()">→</button>
+    </div>
+  </div>
+
+  <!-- PRACTICE SECTION -->
+  <div class="demo-section" id="tab-practice">
+    <div class="practice-area">
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" id="practiceBar"></div>
+      </div>
+      <div class="practice-card">
+        <div class="practice-word" id="practiceWord">meticulous</div>
+        <p style="color:var(--text-muted);font-size:0.85rem;margin-top:8px;">Swipe or tap below</p>
+      </div>
+      <div class="practice-swipe-hint">
+        <span class="swipe-learning">← Still learning</span>
+        <span class="swipe-know">Know it →</span>
+      </div>
+      <div style="display:flex;gap:12px;margin-top:20px;">
+        <button class="toolbar-btn" style="flex:1;background:#fdf0f0;border-color:#e74c3c;color:#c0392b;" onclick="practiceAnswer(false)">✗ Still learning</button>
+        <button class="toolbar-btn" style="flex:1;background:#eafaf1;border-color:#27ae60;color:#1e8449;" onclick="practiceAnswer(true)">✓ Know it</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- QUIZ SECTION -->
+  <div class="demo-section" id="tab-quiz">
+    <div class="quiz-area">
+      <div class="quiz-question" id="quizQ">meticulous</div>
+      <div class="quiz-options" id="quizOpts"></div>
+      <div class="quiz-score">Score: <strong id="quizScore">2</strong> / <strong id="quizTotal">4</strong></div>
+    </div>
+  </div>
+
+  <!-- ALL SAVED SECTION -->
+  <div class="demo-section" id="tab-saved">
+    <div class="card-grid" id="cardGrid"></div>
+  </div>
+
+</main>
+
+<script>
+  const CARDS = [
+    { word: "ephemeral",     def: "短暫的；瞬間即逝的",  star: true,  streak: 3 },
+    { word: "meticulous",    def: "一絲不苟的；非常仔細的", star: false, streak: 1 },
+    { word: "ambiguous",     def: "模糊的；含糊不清的",  star: true,  streak: 2 },
+    { word: "resilience",    def: "韌性；恢復力",        star: false, streak: 0 },
+    { word: "juxtapose",     def: "並列；對比放置",       star: false, streak: 1 },
+    { word: "exacerbate",    def: "使惡化；使加重",       star: true,  streak: 4 },
+  ];
+
+  let cur = 0;
+
+  function updateCard() {
+    const c = CARDS[cur];
+    document.getElementById('cardWord').textContent = c.word;
+    document.getElementById('cardDef').textContent = c.def;
+    document.getElementById('cardStar').textContent = c.star ? '⭐' : '';
+    document.getElementById('cardStreak').textContent = c.streak > 0 ? `🔥 streak ${c.streak}` : '';
+    document.getElementById('cardNum').textContent = cur + 1;
+    document.getElementById('navCounter').textContent = `${cur + 1} / ${CARDS.length}`;
+    document.getElementById('fc').classList.remove('flipped');
+  }
+
+  function flipCard() { document.getElementById('fc').classList.toggle('flipped'); }
+  function nextCard() { cur = (cur + 1) % CARDS.length; updateCard(); }
+  function prevCard() { cur = (cur - 1 + CARDS.length) % CARDS.length; updateCard(); }
+
+  // Toolbar toggle (mutually exclusive for first two)
+  function toggleBtn(btn) {
+    const mutual = ['⭐ Starred Only', '📚 All Saved', '📅 Due Today'];
+    if (mutual.includes(btn.textContent.trim())) {
+      btn.closest('.toolbar').querySelectorAll('.toolbar-btn').forEach(b => {
+        if (mutual.includes(b.textContent.trim())) b.classList.remove('active');
+      });
+    }
+    btn.classList.add('active');
+  }
+
+  // Tabs
+  function showTab(name) {
+    document.querySelectorAll('.demo-section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.demo-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    event.target.classList.add('active');
+  }
+
+  // Practice
+  let practiceIdx = 2, practiceKnow = 0;
+  function practiceAnswer(know) {
+    if (know) practiceKnow++;
+    practiceIdx = (practiceIdx + 1) % CARDS.length;
+    document.getElementById('practiceWord').textContent = CARDS[practiceIdx].word;
+    const pct = Math.round((practiceKnow / CARDS.length) * 100);
+    document.getElementById('practiceBar').style.width = Math.min(pct, 100) + '%';
+  }
+
+  // Quiz
+  const QUIZ_CARDS = [
+    { q: "meticulous",  correct: "一絲不苟的；非常仔細的", wrong: ["短暫的；瞬間即逝的", "模糊的；含糊不清的", "韌性；恢復力"] },
+    { q: "ambiguous",   correct: "模糊的；含糊不清的",  wrong: ["短暫的；瞬間即逝的", "使惡化；使加重", "一絲不苟的；非常仔細的"] },
+  ];
+  let quizIdx = 0, quizScore = 2, quizTotal = 4;
+
+  function renderQuiz() {
+    const q = QUIZ_CARDS[quizIdx % QUIZ_CARDS.length];
+    document.getElementById('quizQ').textContent = q.q;
+    const opts = [q.correct, ...q.wrong].sort(() => Math.random() - 0.5);
+    const container = document.getElementById('quizOpts');
+    container.innerHTML = '';
+    opts.forEach(o => {
+      const div = document.createElement('div');
+      div.className = 'quiz-option';
+      div.textContent = o;
+      div.onclick = () => {
+        container.querySelectorAll('.quiz-option').forEach(x => x.onclick = null);
+        div.classList.add(o === q.correct ? 'correct' : 'wrong');
+        if (o === q.correct) { quizScore++; quizTotal++; }
+        else { quizTotal++; container.querySelector(`.quiz-option:nth-child(${opts.indexOf(q.correct)+1})`).classList.add('correct'); }
+        document.getElementById('quizScore').textContent = quizScore;
+        document.getElementById('quizTotal').textContent = quizTotal;
+        setTimeout(() => { quizIdx++; renderQuiz(); }, 900);
+      };
+      container.appendChild(div);
+    });
+  }
+
+  // All saved grid
+  function renderGrid() {
+    const g = document.getElementById('cardGrid');
+    g.innerHTML = '';
+    CARDS.forEach(c => {
+      const d = document.createElement('div');
+      d.className = 'mini-card';
+      d.innerHTML = `<div class="word">${c.star ? '<span class="star">⭐</span>' : ''}${c.word}</div><div class="def">${c.def}</div>`;
+      g.appendChild(d);
+    });
+  }
+
+  // Simulate upload
+  function simulateUpload() {
+    document.getElementById('warnBox').style.display = 'flex';
+    setTimeout(() => document.getElementById('warnBox').style.display = 'none', 4000);
+  }
+
+  updateCard();
+  renderQuiz();
+  renderGrid();
+</script>
+</body>
+</html>
